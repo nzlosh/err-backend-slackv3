@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
  - Update send_message data and allow changing certain things through msg.extras (#112)"
 ### Fixed
+ - Fix bot alternative prefix to support @mention and plain-text. #114 (@nzlosh)
 
 ## [0.3.1] 2025-04-02
 ### Changed

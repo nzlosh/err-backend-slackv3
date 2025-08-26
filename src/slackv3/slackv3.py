@@ -145,12 +145,11 @@ class SlackBackend(ErrBot):
             )
 
     def update_alternate_prefixes(self):
-        """Converts BOT_ALT_PREFIXES to use the slack ID instead of name
-
-        Slack only acknowledges direct callouts `@username` in chat if referred
-        by using the ID of that user.
         """
-        # convert BOT_ALT_PREFIXES to a list
+        Convert BOT_ALT_PREFIXES items in the form of `@username` to
+        their equivalent Slack user ID `<@Uxxxxxx>`.
+        """
+        # Cast BOT_ALT_PREFIXES to a list
         try:
             bot_prefixes = self.bot_config.BOT_ALT_PREFIXES.split(",")
         except AttributeError:
@@ -159,16 +158,29 @@ class SlackBackend(ErrBot):
         converted_prefixes = []
         for prefix in bot_prefixes:
             try:
-                converted_prefixes.append(f"<@{self.username_to_userid(prefix)}>")
-            except Exception as e:
-                log.error(
-                    f'Failed to look up Slack userid for alternate prefix "{prefix}": {str(e)}'
-                )
+                # Skip prefixes that aren't slack usernames.
+                new_prefix = prefix
+                if prefix.startswith("@"):
+                    new_prefix = self.username_to_userid(prefix)
+                    if new_prefix != prefix:
+                        new_prefix = f"<@{new_prefix}>"
+                        log.debug("Alternate prefix %s converted to slack id %s", prefix, new_prefix)
+            except UserDoesNotExistError as e:
+                new_prefix = prefix
+                log.warning("'%s' was not found: %s", prefix, str(e))
+            except UserNotUniqueError as e:
+                log.warning("'%s' must be unique: %s", prefix, str(e))
+                continue
 
-        self.bot_alt_prefixes = tuple(
-            x.lower() for x in converted_prefixes
-        )
-        log.debug(f"Converted bot_alt_prefixes: {self.bot_config.BOT_ALT_PREFIXES}")
+            if self.bot_config.BOT_ALT_PREFIX_CASEINSENSITIVE:
+                new_prefix = new_prefix.lower()
+            converted_prefixes.append(new_prefix)
+
+        self.bot_alt_prefixes = tuple(converted_prefixes)
+
+        log.debug(f"Converted bot_alt_prefixes: {self.bot_config.BOT_ALT_PREFIXES} to {self.bot_alt_prefixes}")
+
+        log.debug(f"Converted bot_alt_prefixes: {self.bot_config.BOT_ALT_PREFIXES} to {self.bot_alt_prefixes}")
 
     def _setup_event_callbacks(self):
         # List of events obtained from https://api.slack.com/events
